@@ -132,7 +132,7 @@ for (horizon in sort(unique(calldata$predictHorizon))) {
 
   #Select the best number of rounds from CV training
   best_rounds <- which.min(xgbcv$evaluation_log$test_rmse_mean)
-  
+  #best_rounds <- which.min(xgbcv$evaluation_log$test_poisson_nloglik_mean)
   
   #first default - model training
   xgb1 <- xgb.train(
@@ -166,24 +166,30 @@ for (horizon in sort(unique(calldata$predictHorizon))) {
   
 }
 
+
+
 errorSimpMod <- resultSimpMod%>%
   group_by(predictHorizon)%>%
   summarize(error = rmse(leadSamtal, exp(as.numeric(PredictRes))),
             in_100 =  sum((abs(leadSamtal-exp(as.numeric(PredictRes))))<100)/n(),
             rmspe = rmse(leadSamtal, exp(as.numeric(PredictRes)))/mean(leadSamtal))
 
+
+
 meanDay <- resultSimpMod%>%
   group_by(Date)%>%
   summarize(meanPredict = mean(exp(PredictRes)), truth = mean(leadSamtal))%>%
   ggplot(aes(Date))+geom_line(aes(y=meanPredict,colour="predict"))+geom_line(aes(y=truth,colour="trueValue"))
 
-plot <- ggplot(subset(resultSimpMod, predictHorizon %in% c(4)), aes(x = Date+predictHorizon))+
-   geom_line(aes(y = exp(PredictRes),colour="prediction",group =Date)) + 
-  geom_line(aes(y = leadSamtal,colour="trueValue",group =Date))+
-  xlab("Predicted day")+ylab("Number of Calls")+
-  scale_x_date(date_breaks = "1 month", labels=date_format(format = "%Y-%m-%d"),limits = as.Date(c('2017-01-01','2018-01-01')))
+plot <- ggplot(subset(resultSimpMod, predictHorizon %in% c(4,5,6,7)), aes(x = Date+predictHorizon))+
+   geom_line(aes(y = exp(PredictRes),colour="prediction")) + 
+  geom_line(aes(y = leadSamtal,colour="trueValue"))+
+  xlab("Predicted day")+ylab("Number of Calls")#+
+  #scale_x_date(date_breaks = "1 month", labels=date_format(format = "%Y-%m-%d"),limits = as.Date(c('2017-01-01','2018-01-01')))
   
 plot + facet_grid(predictHorizon~.)
+
+write.csv(resultSimpMod, file = "resultSimpleMod20181207.csv")
 
 #view variable importance plot for specific horizon
 resultImportance %>%
